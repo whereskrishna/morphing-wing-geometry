@@ -1,0 +1,26 @@
+# NASA SC(2)-0714 at wind-tunnel scale: geometry for CFD validation (phase 2).
+# Case file: only what differs from default.yaml is listed here.
+#
+#   python scripts/make_baseline.py config/sc20714_tunnel.yaml
+#
+# Same airfoil as config/sc20714.yaml, drawn at the chord of the NASA test
+# model in the Langley 0.3-m Transonic Cryogenic Tunnel (NASA TM-4044):
+# 152.4 mm (6 in). NASA's Reynolds numbers are based on this chord, so CFD
+# run on this geometry compares directly with the published data.
+#
+# Use this case for the unmorphed baseline only. Do NOT judge morph strains
+# with it: the strain check uses chord_m, and at 152.4 mm it would report
+# strains for a 6-inch test model, not the real wing. Morphing work uses
+# config/sc20714.yaml with the full-scale chord from the structures team.
+
+baseline:
+  source: dat
+  name: sc20714
+  dat_file: data/downloads/sc20714.dat
+
+structure:
+  chord_m: 0.1524          # NASA TM-4044 model chord (6 in). Not a design value for the real wing.
+
+output:
+  dir: outputs/sc20714_tunnel
+  plots: false

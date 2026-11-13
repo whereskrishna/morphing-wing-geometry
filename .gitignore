@@ -1,0 +1,12 @@
+# Local tools and caches (not part of the project)
+.venv/
+.idea/
+.claude/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# SolidWorks lock and backup files
+~$*
+*.SLDBAK

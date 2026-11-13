@@ -1,0 +1,11 @@
+name: morphgeom
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - scipy
+  - matplotlib
+  - pyyaml
+  - pytest
+  - pythonocc-core   # OpenCascade CAD kernel, only for STEP files (scripts/make_step.py)

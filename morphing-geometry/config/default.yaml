@@ -1,0 +1,109 @@
+# Every setting for the morphing shape generator, in one place.
+#
+# Either edit the values here, or (better) change them in your own script:
+#     cfg = load_config()
+#     cfg.morph.delta_TE = 0.03
+#
+# Anything marked PLACEHOLDER is NOT a design decision. It only lets the
+# code run. Replace it when the structures / CFD teams decide. The open
+# questions are listed in README.md.
+#
+# Lengths are fractions of chord unless the name says _mm or _m.
+# File paths are relative to the project folder.
+
+baseline:                  # default: NASA SC(2)-0714 (TP-2969 coordinates). NACA 64(1)-412: config/naca641412.yaml
+  source: dat              # dat   = any Selig/Lednicer .dat file, split approximately
+                           # naca6 = thickness table + a = 1.0 mean line
+  name: sc20714            # goes into output file names
+  dat_file: data/downloads/sc20714.dat                    # only used when source = dat
+  thickness_file: data/naca64_1-012_thickness_abbott.dat  # only used when source = naca6
+  cl_design: 0.4           # only used when source = naca6: design lift coefficient of the mean line
+
+points:                    # output points (agree these with the CFD team)
+  n_per_surface: 200       # points on each surface, LE and TE included
+  spacing: cosine          # cosine (bunched at LE and TE) or uniform
+  order: selig             # selig   = TE -> upper -> LE -> lower -> TE
+                           # reverse = TE -> lower -> LE -> upper -> TE
+
+morph:
+  method: camber           # camber          v1: shift the camber line, keep the thickness (skins stretch)
+                           # constant_length v2: skins bend but keep their length (README explains)
+  x_LE: 0.15               # PLACEHOLDER front spar station. Confirm with structures team.
+  x_h: 0.65                # PLACEHOLDER hinge: where the TE starts to bend. Anywhere from the rear spar back.
+  x_rear_spar: null        # rear spar station (back of the wing box). null = at the hinge, so the TE bends
+                           # right from the spar. Set it ahead of x_h to leave fixed skin between them.
+  delta_LE: 0.0            # LE tip drop. + = droop (nose down), - = nose up
+  delta_TE: 0.02           # TE tip drop. + = droop (more camber), - = reflex
+  n: 3                     # shape exponent. 2 = slope matches at the spar, 3 = curvature matches too
+  n_modes: 4               # constant_length only: shape terms for the LE skin (more = closer to v1, wigglier)
+  le_smoothing: 0.01       # constant_length only: 0 = LE skin as close to v1 as possible,
+                           # larger = smoother LE skin (README explains)
+  le_full_droop: true      # constant_length only: true = nose drops as far as v1's (same skin length,
+                           # new shape); false = shape closest to v1, about half the droop
+
+structure:                 # only used for strain and to scale the CAD file
+  chord_m: 1.0             # PLACEHOLDER chord length, metres
+  t_skin_mm: 2.0           # PLACEHOLDER skin thickness, millimetres
+
+checks:
+  n_points: 2001           # dense points per surface used inside the checks only
+  te_exclude: 0.01         # PLACEHOLDER width of the solid TE strip, left out of the strain check (README explains)
+  tol_wingbox_mm: 0.01     # PLACEHOLDER max skin movement allowed inside the wing box, mm
+  tol_arc_pct: 0.1         # PLACEHOLDER max skin length change, percent
+  tol_strain_pct: 0.5      # PLACEHOLDER max skin bending strain, percent
+  tol_slope_deg: 0.001     # "numerically zero" for the slope jump at a spar, degrees
+  tol_curv_per_m: 0.01     # "numerically zero" for the curvature jump at a spar, 1/m
+                           # (changes a 2 mm skin's strain by < 0.001%, i.e. 0.000 at 3 decimals)
+  tol_te_gap_mm: 0.001     # "numerically zero" for the change in TE gap, mm
+
+sweep:                     # every combination is run
+  # PLACEHOLDER ranges. Pick real ones once the target lift coefficients are known.
+  delta_TE: [-0.01, 0.0, 0.01, 0.02]
+  delta_LE: [0.0, 0.01]
+  x_LE: [0.15]
+  x_h: [0.65]
+  x_rear_spar: [null]
+  n: [2, 3]
+  method: [camber, constant_length]   # run both, to compare v1 and v2
+  plots: false             # PNG plots for every shape (slower)
+
+range:                     # scripts/deflection_range.py and spar_study.py: largest deflection that passes every check
+  step_deg: 1.0            # search step, equivalent flap angle in degrees
+  max_deg: 30.0            # search no further than this
+  tol_deg: 0.01            # the limit is found to within this
+  ignore: []               # checks not to stop at, by their summary.csv names, e.g. [skin_length]
+                           # (v1 stretches its skins, so it stops at skin_length almost at once)
+
+spar_study:                # scripts/spar_study.py: how far back can the rear spar go?
+  x_rear_spar: [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85]   # rear spar stations to test (hinge at the spar)
+  method: constant_length  # constant_length (buildable skins) or camber
+  need_droop_deg: 10.0     # PLACEHOLDER droop the morphing TE must reach (equivalent flap angle). Ask aero/CFD.
+  need_reflex_deg: -5.0    # PLACEHOLDER reflex it must reach. Ask aero/CFD.
+
+variable_study:            # scripts/variable_study.py: change ONE setting at a time, find the range each time
+  method: constant_length  # constant_length (buildable skins) or camber
+  edges: [TE, LE]          # which edges to study, each with its own list below
+  # Each line: a setting (its name in this file), the values to try, and a label for
+  # the tables and plots. Optional: hold: {other.setting: value} fixes another setting
+  # meanwhile. Everything else stays as set above.
+  # These are TEST values, wide enough to show which settings matter. Not design choices.
+  TE:
+    - {setting: morph.x_h, values: [0.55, 0.60, 0.65, 0.70, 0.75, 0.80], label: "hinge x/c (rear spar at the hinge)"}
+    - {setting: morph.n, values: [2, 2.5, 2.8, 3, 4, 5], label: "shape exponent n"}
+    - {setting: structure.t_skin_mm, values: [1.0, 1.5, 2.0, 3.0, 4.0], label: "skin thickness (mm)"}
+    - {setting: structure.chord_m, values: [0.5, 0.75, 1.0, 1.5, 2.0], label: "chord (m)"}
+    - {setting: checks.tol_strain_pct, values: [0.25, 0.5, 0.75, 1.0, 1.5], label: "strain limit (%)"}
+    - {setting: checks.te_exclude, values: [0.0, 0.005, 0.01, 0.02, 0.03], label: "solid TE strip x/c"}
+    - {setting: morph.x_LE, values: [0.10, 0.15, 0.20, 0.25], label: "front spar x/c"}
+  LE:
+    - {setting: morph.x_LE, values: [0.10, 0.15, 0.20, 0.25], label: "front spar x/c"}
+    - {setting: morph.n, values: [3, 4, 5], label: "shape exponent n"}
+    - {setting: morph.n_modes, values: [3, 4, 5, 6], label: "LE shape terms n_modes"}   # 2 does not solve
+    - {setting: morph.le_smoothing, values: [0.0, 0.005, 0.01, 0.02, 0.05], label: "LE smoothing"}
+    - {setting: morph.le_full_droop, values: [true, false], label: "LE full droop"}
+    - {setting: structure.t_skin_mm, values: [1.0, 2.0, 4.0], label: "skin thickness (mm)"}
+
+output:
+  dir: outputs/sc20714     # one folder per airfoil
+  cad: true                # write the SolidWorks XYZ file (mm)
+  plots: true              # write PNG plots

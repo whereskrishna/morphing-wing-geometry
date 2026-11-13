@@ -1,0 +1,9 @@
+x_rear_spar,box_length_mm,rear_spar_height_mm,box_area_share_pct,droop_max_deg,reflex_max_deg,droop_tip_mm,reflex_tip_mm,lift_per_deg_estimate,droop_stopped_by,reflex_stopped_by,margin_deg,reaches_need
+0.500,350.000,109.600,52.017,18.578,-21.344,168.056,-195.382,0.155,strain,strain,8.578,PASS
+0.550,400.000,101.122,58.965,17.383,-19.758,140.873,-161.636,0.147,strain,strain,7.383,PASS
+0.600,450.000,90.967,65.298,16.055,-18.031,115.111,-130.209,0.140,strain,strain,6.055,PASS
+0.650,500.000,79.495,70.916,14.578,-16.180,91.025,-101.550,0.131,strain,strain,4.578,PASS
+0.700,550.000,67.024,75.744,12.953,-14.203,69.002,-75.929,0.122,strain,strain,2.953,PASS
+0.750,600.000,53.933,79.729,11.188,-12.117,49.445,-53.674,0.112,strain,strain,1.188,PASS
+0.800,650.000,40.620,82.842,9.281,-9.922,32.684,-34.984,0.101,strain,strain,-0.719,FAIL
+0.850,700.000,27.683,85.087,7.250,-7.648,19.082,-20.143,0.088,strain,strain,-2.750,FAIL

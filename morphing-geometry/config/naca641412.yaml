@@ -1,0 +1,20 @@
+# NACA 64(1)-412: the original baseline from the handoff.
+# Case file: only what differs from default.yaml (the SC(2)-0714) is listed here.
+#
+#   python scripts/make_baseline.py config/naca641412.yaml
+#   python scripts/make_shape.py    config/naca641412.yaml
+#   python scripts/sweep.py         config/naca641412.yaml
+#
+# Built from its two parts: the 64(1)-012 thickness form (Abbott & von
+# Doenhoff, via data/) and the a = 1.0 mean line with design lift
+# coefficient 0.4. make_baseline.py checks it against the published PDAS table.
+
+baseline:
+  source: naca6
+  name: naca641412
+  thickness_file: data/naca64_1-012_thickness_abbott.dat
+  cl_design: 0.4           # the "4" in 64(1)-412
+  dat_file: ""
+
+output:
+  dir: outputs/naca641412  # keeps the 64(1)-412 files apart from the SC(2)-0714 ones

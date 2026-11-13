@@ -1,0 +1,37 @@
+setting,label,value,is_default,droop_max_deg,reflex_max_deg,range_deg,droop_tip_mm,reflex_tip_mm,lift_per_deg_estimate,bend_radius_limit_c,droop_stopped_by,reflex_stopped_by,hit_search_cap
+morph.x_h,hinge x/c (rear spar at the hinge),0.55,no,16.688,-20.852,37.539,134.899,-171.403,0.151,0.200,strain,strain,no
+morph.x_h,hinge x/c (rear spar at the hinge),0.6,no,15.352,-18.984,34.336,109.815,-137.609,0.143,0.200,strain,strain,no
+morph.x_h,hinge x/c (rear spar at the hinge),0.65,yes,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no
+morph.x_h,hinge x/c (rear spar at the hinge),0.7,no,12.328,-14.867,27.195,65.565,-79.640,0.126,0.200,strain,strain,no
+morph.x_h,hinge x/c (rear spar at the hinge),0.75,no,10.633,-12.633,23.266,46.934,-56.032,0.116,0.200,strain,strain,no
+morph.x_h,hinge x/c (rear spar at the hinge),0.8,no,8.820,-10.305,19.125,31.034,-36.363,0.104,0.200,strain,strain,no
+morph.n,shape exponent n,2,no,0.102,-0.102,0.203,0.620,-0.620,0.109,0.200,curvature_join,curvature_join,no
+morph.n,shape exponent n,2.5,no,3.016,-3.086,6.102,18.438,-18.869,0.123,0.200,curvature_join,curvature_join,no
+morph.n,shape exponent n,2.8,no,16.023,-19.789,35.812,100.516,-125.932,0.130,0.200,strain,strain,no
+morph.n,shape exponent n,3,yes,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no
+morph.n,shape exponent n,4,no,7.602,-8.945,16.547,46.710,-55.092,0.157,0.200,strain,strain,no
+morph.n,shape exponent n,5,no,4.789,-5.508,10.297,29.323,-33.749,0.177,0.200,strain,strain,no
+structure.t_skin_mm,skin thickness (mm),1,no,20.930,-28.961,49.891,133.860,-193.696,0.135,0.100,strain,strain,no
+structure.t_skin_mm,skin thickness (mm),1.5,no,17.016,-21.859,38.875,107.110,-140.411,0.135,0.150,strain,strain,no
+structure.t_skin_mm,skin thickness (mm),2,yes,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no
+structure.t_skin_mm,skin thickness (mm),3,no,9.984,-11.469,21.453,61.616,-71.010,0.135,0.300,strain,strain,no
+structure.t_skin_mm,skin thickness (mm),4,no,7.734,-8.594,16.328,47.536,-52.893,0.135,0.400,strain,strain,no
+structure.chord_m,chord (m),0.5,no,7.734,-8.594,16.328,23.768,-26.447,0.135,0.400,strain,strain,no
+structure.chord_m,chord (m),0.75,no,11.039,-12.883,23.922,51.211,-60.038,0.135,0.267,strain,strain,no
+structure.chord_m,chord (m),1,yes,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no
+structure.chord_m,chord (m),1.5,no,18.273,-23.945,42.219,173.357,-233.145,0.135,0.133,strain,strain,no
+structure.chord_m,chord (m),2,no,20.930,-28.961,49.891,267.720,-387.393,0.135,0.100,strain,strain,no
+checks.tol_strain_pct,strain limit (%),0.25,no,7.734,-8.594,16.328,47.536,-52.893,0.135,0.400,strain,strain,no
+checks.tol_strain_pct,strain limit (%),0.5,yes,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no
+checks.tol_strain_pct,strain limit (%),0.75,no,18.273,-23.945,42.219,115.571,-155.430,0.135,0.133,strain,strain,no
+checks.tol_strain_pct,strain limit (%),1,no,20.930,-28.961,49.891,133.860,-193.696,0.135,0.100,strain,strain,no
+checks.tol_strain_pct,strain limit (%),1.5,no,22.172,-30.000,52.172,142.632,-202.073,0.135,0.067,morph did not solve (Constant-length TE morph did not converge (delta_TE = 0.143 may be too large).),nothing failed up to 30 deg,yes
+checks.te_exclude,solid TE strip x/c,0,no,13.625,-16.539,30.164,84.836,-103.934,0.135,0.200,strain,strain,no
+checks.te_exclude,solid TE strip x/c,0.005,no,13.766,-16.766,30.531,85.746,-105.442,0.135,0.200,strain,strain,no
+checks.te_exclude,solid TE strip x/c,0.01,yes,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no
+checks.te_exclude,solid TE strip x/c,0.02,no,14.156,-17.445,31.602,88.279,-109.987,0.135,0.200,strain,strain,no
+checks.te_exclude,solid TE strip x/c,0.03,no,14.391,-17.914,32.305,89.804,-113.142,0.135,0.200,strain,strain,no
+morph.x_LE,front spar x/c,0.1,no,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no
+morph.x_LE,front spar x/c,0.15,yes,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no
+morph.x_LE,front spar x/c,0.2,no,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no
+morph.x_LE,front spar x/c,0.25,no,13.898,-16.984,30.883,86.606,-106.901,0.135,0.200,strain,strain,no

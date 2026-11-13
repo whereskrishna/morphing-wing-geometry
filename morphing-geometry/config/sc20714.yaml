@@ -1,0 +1,28 @@
+# NASA SC(2)-0714 supercritical airfoil (14% thick, design lift coefficient 0.7).
+# This is now the default airfoil, so this file changes nothing: it is kept so
+# commands that name it still work, and as a template for other .dat airfoils
+# (copy it, change the name, file and output folder).
+#
+#   python scripts/make_baseline.py config/sc20714.yaml
+#   python scripts/make_shape.py    config/sc20714.yaml
+#   python scripts/sweep.py         config/sc20714.yaml
+#
+# Coordinates: NASA TP-2969 design coordinates, via the UIUC Airfoil
+# Coordinates Database (data/downloads/sc20714.dat). They are given to 4
+# decimals; the loader smooths to that level (README explains).
+# Wind-tunnel data to validate CFD against: NASA TM-4044 (Langley 0.3-m TCT,
+# Mach 0.6 to 0.76).
+
+baseline:
+  source: dat
+  name: sc20714
+  dat_file: data/downloads/sc20714.dat
+
+output:
+  dir: outputs/sc20714     # keeps SC(2)-0714 files apart from the 64(1)-412 ones
+
+# The spars, chord, skin and limits are still the default placeholders.
+# Set them here for this airfoil once they are known, e.g.
+# morph:
+#   x_LE: 0.15
+#   x_h: 0.65
