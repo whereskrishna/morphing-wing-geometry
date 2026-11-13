@@ -14,3 +14,9 @@ and writes coordinate files and STEP files for SolidWorks.
 > The chord, skin thickness, strain limit, spar positions and needed deflection range
 > are still **placeholders** until the structures and aero teams supply real values,
 > so the results in `outputs/` show the method, not final design numbers.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The reference airfoil coordinates in `morphing-geometry/data/`
+come from NASA, UIUC and PDAS; their sources are listed in
+[data/README_reference_files.txt](morphing-geometry/data/README_reference_files.txt).
