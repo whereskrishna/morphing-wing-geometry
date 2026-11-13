@@ -45,6 +45,15 @@ structure:                 # only used for strain and to scale the CAD file
   chord_m: 1.0             # PLACEHOLDER chord length, metres
   t_skin_mm: 2.0           # PLACEHOLDER skin thickness, millimetres
 
+flight:                    # cruise condition from the team (2026-11-13). Only used to turn the rough
+                           # lift estimate into a force; the shape checks do not depend on it.
+  altitude_ft: 38000
+  speed_of_sound_m_s: 295.1
+  velocity_m_s: 236.08     # Mach 0.800
+  density_kg_m3: 0.3021    # CHECK: the pressure and speed of sound below give 0.332 (the standard
+                           # atmosphere at 38,000 ft). 0.3021 is the standard value at about 40,000 ft.
+  pressure_pa: 20646
+
 checks:
   n_points: 2001           # dense points per surface used inside the checks only
   te_exclude: 0.01         # PLACEHOLDER width of the solid TE strip, left out of the strain check (README explains)
@@ -79,6 +88,15 @@ spar_study:                # scripts/spar_study.py: how far back can the rear sp
   method: constant_length  # constant_length (buildable skins) or camber
   need_droop_deg: 10.0     # PLACEHOLDER droop the morphing TE must reach (equivalent flap angle). Ask aero/CFD.
   need_reflex_deg: -5.0    # PLACEHOLDER reflex it must reach. Ask aero/CFD.
+
+flap_study:                # scripts/flap_study.py: every flap angle x hinge x shape exponent (TE only)
+  method: constant_length  # constant_length (buildable skins) or camber
+  angle_min_deg: -30       # equivalent flap angles tried at every hinge and n: min to max in steps
+  angle_max_deg: 30
+  angle_step_deg: 1
+  x_h: [0.55, 0.575, 0.60, 0.625, 0.65, 0.675, 0.70, 0.725, 0.75, 0.775, 0.80, 0.825, 0.85]  # rear spar at the hinge
+  n: [2, 2.5, 2.8, 3, 3.5, 4, 5, 6]
+  workers: 0               # shapes made at once, one per processor core; 0 = all cores
 
 variable_study:            # scripts/variable_study.py: change ONE setting at a time, find the range each time
   method: constant_length  # constant_length (buildable skins) or camber

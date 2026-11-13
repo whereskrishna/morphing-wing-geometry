@@ -405,3 +405,33 @@ def test_vary_one(af, cfg):
     assert get_setting(c, "morph.n") == 5
     with pytest.raises(KeyError):
         vary_one(c, af, "TE", {"setting": "morph.x_hinge", "values": [0.7]})
+
+
+def test_flight_condition():
+    from morphgeom.aero import flight_condition, lift_per_span
+    fl = SimpleNamespace(speed_of_sound_m_s=295.1, velocity_m_s=236.08, density_kg_m3=0.3021, pressure_pa=20646)
+    fc = flight_condition(fl)
+    assert fc["mach"] == pytest.approx(0.8, abs=1e-4)
+    assert fc["q_pa"] == pytest.approx(0.5 * 0.3021 * 236.08 ** 2)
+    assert fc["prandtl_glauert"] == pytest.approx(1 / 0.6, rel=1e-3)
+    # standard atmosphere at 38,000 ft: 216.65 K and 0.3320 kg/m3 (so 0.3021 does not match)
+    assert fc["temperature_k"] == pytest.approx(216.65, abs=0.1)
+    assert fc["density_from_p_t"] == pytest.approx(0.3320, abs=5e-4)
+    assert lift_per_span(0.1, 8000.0, 1.5) == pytest.approx(1200.0)
+
+
+def test_flap_point(af, cfg):
+    from morphgeom import copy_config
+    from morphgeom.deflection import find_range, flap_point
+    c = copy_config(cfg)
+    c.morph.method = "constant_length"
+    c.range.step_deg, c.range.tol_deg = 2.0, 0.1
+    rows, lim = flap_point(c, 0.7, 4, [-2.0, 2.0, 40.0], af)
+    assert [r["angle_deg"] for r in rows] == [-2.0, 2.0, 40.0]
+    assert rows[0]["passes"] and rows[1]["passes"] and not rows[2]["passes"] and rows[2]["failed"]
+    assert rows[1]["dcl_estimate"] > 0 > rows[0]["dcl_estimate"]          # droop adds lift
+    assert rows[1]["tip_mm"] == pytest.approx(0.3 * np.tan(np.radians(2)) * 1000 * c.structure.chord_m)
+    c.morph.x_h, c.morph.n = 0.7, 4                                       # same as find_range directly
+    rng = find_range(c, af, "TE")
+    assert lim["droop_max_deg"] == rng["droop"].angle_deg and lim["reflex_max_deg"] == rng["reflex"].angle_deg
+    assert lim["range_deg"] == pytest.approx(lim["droop_max_deg"] - lim["reflex_max_deg"])

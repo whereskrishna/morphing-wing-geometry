@@ -1,4 +1,4 @@
-"""Rough lift change from a shape change, by thin-airfoil theory.
+"""Rough lift change from a shape change, by thin-airfoil theory, and the flight condition.
 
     dcl = lift_change(base, morph)     # surfaces from surfaces.build or a morph
 
@@ -55,3 +55,36 @@ def zero_lift_cl(S: Surfaces) -> float:
 def lift_change(base: Surfaces, morph: Surfaces) -> float:
     """Change in lift coefficient at the same angle of attack (+ = more lift)."""
     return zero_lift_cl(morph) - zero_lift_cl(base)
+
+
+# ---- flight condition (config flight:) ----
+
+GAMMA = 1.4          # air, ratio of specific heats
+R_AIR = 287.05287    # air, gas constant J/(kg K)
+
+
+def flight_condition(fl) -> dict:
+    """Numbers that follow from the flight settings.
+
+    mach                 velocity / speed of sound
+    q_pa                 dynamic pressure, 1/2 rho V^2 (uses the density as given)
+    temperature_k        from the speed of sound, a = sqrt(1.4 R T)
+    density_from_p_t     pressure / (R T): what the density should be if the
+                         pressure and speed of sound are right (a cross-check)
+    reynolds_per_m       rho V / mu, for one metre of chord (Sutherland viscosity)
+    prandtl_glauert      1 / sqrt(1 - M^2): the simple compressibility factor
+                         on lift. It is only good well below the speed where
+                         shocks form, so at Mach 0.8 it is a rough guide only.
+    """
+    a, V, rho, p = fl.speed_of_sound_m_s, fl.velocity_m_s, fl.density_kg_m3, fl.pressure_pa
+    M = V / a
+    T = a ** 2 / (GAMMA * R_AIR)
+    mu = 1.458e-6 * T ** 1.5 / (T + 110.4)
+    return {"mach": M, "q_pa": 0.5 * rho * V ** 2, "temperature_k": T,
+            "density_from_p_t": p / (R_AIR * T), "reynolds_per_m": rho * V / mu,
+            "prandtl_glauert": 1 / np.sqrt(1 - M ** 2) if M < 1 else float("nan")}
+
+
+def lift_per_span(dcl: float, q_pa: float, chord_m: float) -> float:
+    """Lift change per metre of span (N/m) from a lift coefficient change."""
+    return dcl * q_pa * chord_m

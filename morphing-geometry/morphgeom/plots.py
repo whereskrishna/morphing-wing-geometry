@@ -428,3 +428,145 @@ def variable_study(groups, cfg, edge: str, default: dict, title: str, path, need
                            "search cap, not a check", title_fontsize=FONT - 2, alignment="left")
     fig.savefig(path, dpi=150, facecolor=SURFACE)
     plt.close(fig)
+
+
+# ---- every flap angle x hinge x shape exponent (scripts/flap_study.py) ----
+
+def _ramp(hex_color):
+    """Sequential colour map: one hue, from near the surface colour to full strength."""
+    from matplotlib.colors import LinearSegmentedColormap
+    return LinearSegmentedColormap.from_list("ramp", ["#f3f2ee", hex_color], N=256)
+
+
+def _heat(ax, xs, ns, vals, cmap, fmt, title, outline=None):
+    """Hinge (columns) x n (rows) map with the value written in each cell."""
+    V = np.array(vals, dtype=float)
+    lo, hi = np.nanmin(V), np.nanmax(V)
+    hi = hi if hi > lo else lo + 1
+    ax.imshow(V, cmap=cmap, vmin=lo, vmax=hi, aspect="auto", origin="lower", interpolation="nearest")
+    for i in range(len(ns)):
+        for j in range(len(xs)):
+            v = V[i, j]
+            if np.isnan(v):
+                ax.text(j, i, "fails", ha="center", va="center", fontsize=FONT - 2, color=TEXT2)
+                continue
+            r, g, b, _ = cmap((v - lo) / (hi - lo))
+            dark = 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.45          # light text on dark cells only
+            ax.text(j, i, fmt(v), ha="center", va="center", fontsize=FONT - 2,
+                    color=SURFACE if dark else TEXT)
+            if outline is not None and outline[i][j]:
+                ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False, edgecolor=TEXT, linewidth=1.6))
+    ax.set_xticks(range(len(xs)), [f"{x:.3f}".rstrip("0") for x in xs], fontsize=FONT - 2)
+    ax.set_yticks(range(len(ns)), [f"{n:g}" for n in ns], fontsize=FONT - 1)
+    ax.set_xlabel("hinge x / c   (rear spar at the hinge)", color=TEXT2, fontsize=FONT - 1)
+    ax.set_ylabel("shape exponent n", color=TEXT2, fontsize=FONT - 1)
+    ax.set_title(title, fontsize=FONT, color=TEXT, loc="left")
+    for side in ax.spines.values():
+        side.set_visible(False)
+    ax.tick_params(colors=TEXT2, length=0)
+
+
+def flap_study_limits(limits, cfg, fc, title: str, path) -> None:
+    """Largest droop, largest reflex, total range and lift per degree at
+    cruise, as maps over hinge x n."""
+    xs = sorted({r["x_h"] for r in limits})
+    ns = sorted({r["n"] for r in limits})
+    by = {(r["x_h"], r["n"]): r for r in limits}
+
+    def grid(key):
+        return [[by[(x, n)][key] for x in xs] for n in ns]
+
+    need = cfg.spar_study
+    reach = [[by[(x, n)]["reaches_need"] for x in xs] for n in ns]
+    fig, axes = plt.subplots(2, 2, figsize=(15, 9.5), facecolor=SURFACE, layout="constrained")
+    _heat(axes[0, 0], xs, ns, grid("droop_max_deg"), _ramp(MORPH), lambda v: f"{v:.1f}",
+          "Largest droop (deg): passes every check up to here")
+    _heat(axes[0, 1], xs, ns, np.abs(grid("reflex_max_deg")), _ramp(REFLEX),
+          lambda v: f"-{v:.1f}" if v >= 0.05 else "0.0",
+          "Largest reflex (deg)")
+    _heat(axes[1, 0], xs, ns, grid("range_deg"), _ramp(BASE), lambda v: f"{v:.1f}",
+          f"Total range, droop to reflex (deg). Outlined: reaches the needed {need.need_droop_deg:+g} / "
+          f"{need.need_reflex_deg:+g} deg (placeholder)", outline=reach)
+    step = cfg.flap_study.angle_step_deg
+    lift = [[by[(x, n)]["lift_per_deg_n_per_m"] if by[(x, n)]["droop_max_deg"] >= step else np.nan for x in xs]
+            for n in ns]                                  # blank where even the first step fails a check
+    _heat(axes[1, 1], xs, ns, lift, _ramp(BASE), lambda v: f"{v:.0f}",
+          f"Lift change at cruise, N per metre of span per degree (rough: low-speed theory,\n"
+          f"first few degrees only; q = {fc['q_pa']:.0f} Pa, chord {cfg.structure.chord_m:g} m)")
+    fig.suptitle(f"{title}\nchord {cfg.structure.chord_m:g} m, skin {cfg.structure.t_skin_mm:g} mm, strain limit "
+                 f"{cfg.checks.tol_strain_pct:g} % (placeholders); cruise Mach {fc['mach']:.2f}",
+                 color=TEXT, fontsize=FONT + 1)
+    fig.savefig(path, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
+
+
+# what stopped a shape, for the map: (label, colour); the first that applies is shown
+_STOPS = [("passes every check", "#b9d3f0"), ("morph did not solve", SPAR), ("curvature_join", "#7f56d9"),
+          ("strain", MORPH), ("other check", TEXT2)]
+
+
+def _stop_kind(row) -> int:
+    if row["passes"]:
+        return 0
+    failed = row["failed"]
+    for i, (key, _) in enumerate(_STOPS[1:-1], 1):
+        if key in failed:
+            return i
+    return len(_STOPS) - 1
+
+
+def flap_study_map(grid, limits, cfg, title: str, path) -> None:
+    """Every shape tried, one panel per n: angle against hinge, coloured by
+    whether it passes or what stopped it, with the exact limits on top."""
+    from matplotlib.colors import ListedColormap
+    from matplotlib.patches import Patch
+    xs = sorted({r["x_h"] for r in grid})
+    ns = sorted({r["n"] for r in grid})
+    angles = sorted({r["angle_deg"] for r in grid})
+    step = min(np.diff(angles)) if len(angles) > 1 else 1.0
+    a_all = np.arange(angles[0], angles[-1] + step / 2, step)
+    ia = {a: i for i, a in enumerate(np.round(a_all, 9))}
+    cols = 4
+    rows = int(np.ceil(len(ns) / cols))
+    fig, axes = plt.subplots(rows, cols, figsize=(15, 4.6 * rows + 0.8), facecolor=SURFACE, layout="constrained",
+                             sharex=True, sharey=True, squeeze=False)
+    cmap = ListedColormap([c for _, c in _STOPS])
+    need = cfg.spar_study
+    for k, n in enumerate(ns):
+        ax = axes[k // cols, k % cols]
+        Z = np.full((len(a_all), len(xs)), np.nan)
+        for r in grid:
+            if r["n"] == n:
+                Z[ia[round(r["angle_deg"], 9)], xs.index(r["x_h"])] = _stop_kind(r)
+        dx = np.diff(xs).min() if len(xs) > 1 else 0.05
+        ax.pcolormesh(np.r_[np.array(xs) - dx / 2, xs[-1] + dx / 2], np.r_[a_all - step / 2, a_all[-1] + step / 2],
+                      np.ma.masked_invalid(Z), cmap=cmap, vmin=-0.5, vmax=len(_STOPS) - 0.5,
+                      edgecolor=SURFACE, linewidth=0.2)
+        lim = sorted((r for r in limits if r["n"] == n), key=lambda r: r["x_h"])
+        for key in ("droop_max_deg", "reflex_max_deg"):
+            ax.plot([r["x_h"] for r in lim], [r[key] for r in lim], color=TEXT, linewidth=1.4, marker="o",
+                    markersize=3)
+        for v in (need.need_droop_deg, need.need_reflex_deg):
+            ax.axhline(v, color=TEXT, linewidth=0.9, linestyle="--")
+        ax.set_title(f"n = {n:g}", fontsize=FONT, color=TEXT, loc="left")
+        ax.set_facecolor(SURFACE)
+        ax.tick_params(colors=TEXT2, labelsize=FONT - 1)
+        for side in ax.spines.values():
+            side.set_visible(False)
+        if k % cols == 0:
+            ax.set_ylabel("equivalent flap angle (deg)", color=TEXT2, fontsize=FONT - 1)
+        if k // cols == rows - 1:
+            ax.set_xlabel("hinge x / c", color=TEXT2, fontsize=FONT - 1)
+    for k in range(len(ns), rows * cols):
+        axes[k // cols, k % cols].set_visible(False)
+    seen = {_stop_kind(r) for r in grid}
+    handles = [Patch(facecolor=c, label=lab.replace("_", " ")) for i, (lab, c) in enumerate(_STOPS) if i in seen]
+    handles += [plt.Line2D([], [], color=TEXT, linewidth=1.4, marker="o", markersize=3,
+                           label="exact largest droop / reflex"),
+                plt.Line2D([], [], color=TEXT, linewidth=0.9, linestyle="--",
+                           label=f"needed {need.need_droop_deg:+g} / {need.need_reflex_deg:+g} deg (placeholder)")]
+    fig.legend(handles=handles, loc="outside lower center", ncol=4, frameon=False, labelcolor=TEXT, fontsize=FONT - 1)
+    fig.suptitle(f"{title}\nEach cell is one shape. Colour: passes, or the check that stops it (solver first, "
+                 f"then curvature join, then strain)", color=TEXT, fontsize=FONT + 1)
+    fig.savefig(path, dpi=150, facecolor=SURFACE)
+    plt.close(fig)

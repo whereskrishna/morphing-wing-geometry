@@ -24,7 +24,7 @@ import numpy as np
 
 from .config import copy_config
 from .morph import _validate
-from .pipeline import Result, make_shape
+from .pipeline import Result, load_baseline, make_shape
 from .surfaces import build, loop, stations
 
 # pass/fail checks, by the column names used in summary.csv
@@ -248,3 +248,48 @@ def spread(rows: list) -> float:
     over the values that could be solved."""
     v = [r["range_deg"] for r in rows if not unsolved(r)]
     return max(v) - min(v) if v else 0.0
+
+
+# ---- every flap angle x hinge x shape exponent (scripts/flap_study.py) ----
+
+_BASELINES = {}
+
+
+def _baseline(cfg):
+    """The baseline, loaded once per process. (Worker processes load their
+    own: the loaded airfoil cannot be sent between processes.)"""
+    b = cfg.baseline
+    key = (b.source, b.dat_file, b.thickness_file, b.cl_design)
+    if key not in _BASELINES:
+        _BASELINES[key] = load_baseline(cfg)
+    return _BASELINES[key]
+
+
+def _short_failure(name: str) -> str:
+    return "morph did not solve" if name.startswith("morph did not solve") else name
+
+
+def flap_point(cfg, x_h: float, n: float, angles, af=None) -> tuple:
+    """One hinge and shape exponent (rear spar at the hinge): every TE angle in
+    `angles` (equivalent flap angles, deg), and the exact largest droop and
+    reflex (find_range). Returns (one row per angle, one row of limits)."""
+    c = copy_config(cfg)
+    c.morph.x_h, c.morph.x_rear_spar, c.morph.n = x_h, None, n
+    af = af if af is not None else _baseline(c)
+    c_mm = 1000 * c.structure.chord_m
+    rows = []
+    for a in angles:
+        res, failed = try_angle(c, af, "TE", a)
+        r = res.row if res is not None else {}
+        rows.append({"x_h": x_h, "n": float(n), "angle_deg": a, "tip_mm": delta_for(a, c.morph, "TE") * c_mm,
+                     "passes": not failed, "failed": "; ".join(_short_failure(f) for f in failed),
+                     "strain_max_pct": r.get("strain_max_pct", float("nan")),
+                     "dcl_estimate": r.get("dcl_estimate", float("nan"))})
+    rng = find_range(c, af, "TE")
+    d, r = rng["droop"], rng["reflex"]
+    limits = {"x_h": x_h, "n": float(n), "droop_max_deg": d.angle_deg, "reflex_max_deg": r.angle_deg,
+              "range_deg": d.angle_deg - r.angle_deg, "droop_tip_mm": d.delta * c_mm, "reflex_tip_mm": r.delta * c_mm,
+              "lift_per_deg_estimate": lift_per_degree(d),
+              "droop_stopped_by": "; ".join(_short_failure(f) for f in d.stopped_by) or "nothing (search cap)",
+              "reflex_stopped_by": "; ".join(_short_failure(f) for f in r.stopped_by) or "nothing (search cap)"}
+    return rows, limits

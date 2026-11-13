@@ -57,7 +57,8 @@ Then run any script:
 | `python scripts/deflection_range.py` | Largest droop and reflex that pass every check, for the settings at the top of the script → `outputs/sc20714/range/` (the two limit shapes, a CSV and a plot). About 5 seconds. |
 | `python scripts/spar_study.py` | Deflection range at a series of rear spar stations, and the furthest-aft station that still reaches the needed range → `outputs/sc20714/spar_study/`. About 35 seconds. |
 | `python scripts/variable_study.py` | Changes one setting at a time (hinge, shape exponent, skin, chord, strain limit, ...) and finds the range each time, then ranks which settings matter most → `outputs/sc20714/variable_study/`. A few minutes. |
-| `pytest` | Runs the 27 tests in `tests/` (about 45 seconds). |
+| `python scripts/flap_study.py` | Every equivalent flap angle (−30° to +30°) at every hinge and shape exponent n: which shapes pass, the exact largest droop and reflex for each hinge and n, and the lift per degree at the cruise condition → `outputs/sc20714/flap_study/`. About 1.5 minutes (uses every processor core). |
+| `pytest` | Runs the 29 tests in `tests/` (about a minute). |
 
 With no case file, every script works on the **SC(2)-0714**. Each script also
 takes a **case file** for another airfoil or setup, for example the NACA
@@ -470,6 +471,122 @@ Each setting was changed on its own, so the study does not show what happens
 when two change at once (for example a thinner skin *and* a hinge further
 back). Run that combination as a case file with `deflection_range.py`.
 
+### Every flap angle, hinge and n: `scripts/flap_study.py`
+
+**What it does.** For every hinge station and shape exponent n listed under
+`flap_study:` in `config/default.yaml` (rear spar at the hinge), it makes the
+morphed TE at **every** equivalent flap angle from −30° to +30° in 1° steps
+and runs every check. It also finds the exact largest droop and reflex for
+each hinge and n (the same search as `deflection_range.py`). Then it turns
+the lift estimate into a force at the cruise condition (`flight:`, below).
+
+```bash
+python scripts/flap_study.py
+```
+
+13 hinges × 8 values of n × 60 angles = 6,240 shapes, plus 104 range
+searches. It runs on every processor core at once, so it takes about
+1.5 minutes. It writes to `outputs/sc20714/flap_study/`:
+- `sc20714_flap_study_constlen_grid.csv`: one row per shape tried (passes or
+  what failed, peak strain, lift);
+- `..._limits.csv`: one row per hinge and n (largest droop and reflex, what
+  stopped them, lift per degree, whether it reaches the needed range);
+- `..._limits.png`: those as hinge × n maps;
+- `..._map.png`: every shape tried, one panel per n, coloured by what stops it.
+
+**Results, SC(2)-0714** (v2; chord, skin, strain limit and need are placeholders):
+
+Largest droop / largest reflex (degrees):
+
+| n | hinge 0.55 | 0.60 | 0.65 | 0.70 | 0.75 | 0.80 | 0.85 |
+|---|---|---|---|---|---|---|---|
+| 2 | 0.1 / −0.1 | 0.1 / −0.1 | 0.1 / −0.1 | 0.1 / −0.1 | 0.1 / −0.1 | 0.1 / −0.1 | 0.0 / 0.0 |
+| 2.5 | 4.2 / −4.3 | 3.7 / −3.8 | 3.0 / −3.1 | 2.5 / −2.5 | 1.9 / −1.9 | 1.5 / −1.5 | 1.0 / −1.0 |
+| 2.8 | 19.0 / −24.0 | 17.6 / −22.0 | 16.0 / −19.8 | 14.3 / −17.4 | 12.4 / −14.8 | 10.3 / −12.1 | 8.0 / −9.3 |
+| **3** | **16.7 / −20.9** | **15.4 / −19.0** | **13.9 / −17.0** | **12.3 / −14.9** | **10.6 / −12.6** | **8.8 / −10.3** | **6.9 / −7.9** |
+| 3.5 | 12.3 / −15.0 | 11.2 / −13.5 | 10.1 / −12.0 | 8.9 / −10.5 | 7.6 / −8.9 | 6.3 / −7.2 | 4.9 / −5.6 |
+| 4 | 9.4 / −11.2 | 8.5 / −10.1 | 7.6 / −8.9 | 6.7 / −7.8 | 5.7 / −6.6 | 4.7 / −5.4 | 3.7 / −4.2 |
+| 5 | 5.9 / −6.9 | 5.4 / −6.2 | 4.8 / −5.5 | 4.2 / −4.8 | 3.6 / −4.1 | 3.0 / −3.4 | 2.4 / −2.6 |
+| 6 | 4.1 / −4.7 | 3.7 / −4.2 | 3.3 / −3.8 | 2.9 / −3.3 | 2.5 / −2.8 | 2.1 / −2.3 | 1.7 / −1.9 |
+
+(Every 0.025 step is in the CSV and the plots.)
+
+What this shows:
+
+1. **n matters most.** Going from n = 3 to n = 4 roughly halves the range,
+   and n = 6 leaves about a quarter. A higher n puts the bend near the tip, so
+   the skin there curves much harder for the same tip drop.
+2. **n = 2 and 2.5 don't work.** The curvature-join check stops them within a
+   few degrees at every hinge (n = 2 has a real curvature jump; n = 2.5 has
+   the hinge strain spike described above).
+3. **n = 2.8 gives about 15% more than n = 3 at every hinge.** Its limit shapes
+   at hinges 0.55, 0.75 and 0.85 still pass with 16× finer check points, with
+   the same peak strain of 0.500%. So the gain is real, but the open question
+   about n below 3 (16) still applies.
+4. **Hinge.** Every 0.05 c further aft costs about 1.6° of droop and 2.2° of
+   reflex at n = 3. It is a steady trade at every n, with no sudden drop.
+5. **Needed range** (+10° / −5°, placeholder). It is reached by:
+   - n = 2.8 with the hinge up to 0.80;
+   - n = 3 up to 0.75 (`spar_study.py` puts the exact limit at about 0.767);
+   - n = 3.5 up to 0.65;
+   - never with n = 4 or more.
+6. **What stops it.** For n of 2.8 or more, always strain. Past the limit, the
+   v2 solver can't make the shape at all beyond about 20–30° (grey on the
+   map).
+7. **Lift per degree goes the other way.** A higher n or a hinge further
+   forward gives more lift per degree:
+   - n = 6 gives about 45% more than n = 3;
+   - hinge 0.55 gives about 65% more than 0.85.
+
+   But the range shrinks faster than the lift per degree grows. So n = 3
+   reaches far more lift in total than n = 6.
+
+**At cruise** (rough: low-speed theory, first few degrees only). One degree
+at n = 3 with the hinge at 0.65 changes cl by about 0.135, about a fifth of
+the SC(2)-0714's design cl of 0.7. That is about **1,140 N per metre of span**
+(q = 8,419 Pa, chord 1 m placeholder). Across the whole map it ranges from
+about 700 to 1,850 N/m per degree.
+
+**64(1)-412** (`python scripts/flap_study.py config/naca641412.yaml`):
+- the same pattern, with about 5% more droop and 5% less reflex than the
+  SC(2)-0714;
+- n = 3 at 0.65: +14.6° / −16.2°;
+- the need is met by n = 3 up to 0.775, n = 2.8 up to 0.80 and n = 3.5 up
+  to 0.675.
+
+### Cruise condition (`flight:` in `config/default.yaml`)
+
+From the team (2026-11-13):
+
+| | Given | What the code works out |
+|---|---|---|
+| Altitude | 38,000 ft | |
+| Speed of sound | 295.1 m/s | temperature 216.7 K (standard atmosphere at 38,000 ft: 216.65 K) |
+| Velocity | 236.08 m/s | **Mach 0.800** |
+| Air density | 0.3021 kg/m³ | dynamic pressure q = ½ρV² = **8,419 Pa** |
+| Pressure | 20,646 Pa | matches the standard atmosphere at 38,000 ft |
+| | | Reynolds number about **5.0 million per metre of chord** |
+
+**The density doesn't match the other numbers.** The pressure and speed of
+sound give 20,646 / (287.05 × 216.7) = **0.332 kg/m³**, the standard value at
+38,000 ft. 0.3021 is the standard density at about 40,000 ft. The code uses
+the given 0.3021 and prints this warning. With 0.332, q and every lift force
+would be 10% higher (9,249 Pa). Open question 17.
+
+**What the flight condition changes.** Only the lift numbers. The shape
+checks (strain, skin length, joins) are pure geometry, so the deflection
+ranges don't depend on it. Air load on the skin is not modelled at all.
+
+**Mach 0.8 is past what the lift estimate can do.** The usual compressibility
+correction (Prandtl–Glauert) would multiply the lift by 1.67 at Mach 0.8. It
+is not used, because it fails once shocks form, and a 14%-thick
+supercritical section at Mach 0.8 is well into that range. NASA tested the
+SC(2)-0714 at Mach 0.6–0.76. On a swept wing the section sees less: roughly
+M × cos(sweep), e.g. about 0.69 at 30° sweep. So the wing's sweep matters
+(open question 18). The CSV keeps the corrected number as
+`lift_per_deg_n_per_m_compressible` for reference only. CFD gives the real
+answer.
+
 ### Rough lift estimate
 
 `aero.py` estimates the lift change of a morph at the same angle of attack,
@@ -670,7 +787,7 @@ base meshed (open question 5).
 4. Skin thickness and chord for the strain check. Placeholders: 2 mm and 1 m. Together with the strain limit (question 6) they only matter through skin thickness ÷ (2 × strain limit) ÷ chord (`variable_study.py`), so agreeing that one number is enough for the range.
 5. Coordinate format with the CFD team: point order, points per surface, TE handling. The SC(2)-0714 has a real blunt TE (7 mm on a 1 m chord): how should its base be closed and meshed?
 6. Pass/fail limits for skin length, strain and wing-box movement. Placeholders: 0.1%, 0.5%, 0.01 mm.
-7. Which flight conditions and lift coefficients the sweep should target. The sweep ranges are placeholders.
+7. Which flight conditions and lift coefficients the sweep should target. The cruise condition is now given (38,000 ft, Mach 0.8: `flight:`); the lift coefficients the morph must add or remove are still needed, and the sweep ranges are placeholders.
 8. Width of the solid TE strip left out of the strain check. Placeholder: 1% chord. It barely matters on the blunt SC(2)-0714 TE, but a sharp TE (64(1)-412) needs at least about 0.5% chord (`variable_study.py`).
 9. Does the CFD team agree to keep morphed shapes in the baseline frame (not re-normalised)?
 10. *New (v2):* is a sliding lower skin at the TE acceptable? If not, which gives: skin stretch (v1) or section thickness?
@@ -679,7 +796,9 @@ base meshed (open question 5).
 13. *New (SC(2)-0714):* do its 14% thickness and design lift coefficient of 0.7 match the wing station you care about? The SC(2) family (NASA TP-2969, all in the UIUC database) has other combinations, e.g. -0410, -0412, -0610, -0612, -0710, -0712. Any of them runs the same way: copy `config/sc20714.yaml` and change the file and name.
 14. *New (deflection range):* what range must the morphing TE reach? `spar_study.need_droop_deg` and `need_reflex_deg`. Placeholders: +10° and −5°. Better still as a lift change, once aero/CFD say what the wing needs.
 15. *New (hinge):* does the TE start bending right at the rear spar, or is there fixed structure (actuators, a false spar) between them? Set `x_rear_spar` ahead of `x_h` for the second case.
-16. *New (shape exponent):* is n a little below 3 acceptable? n = 2.8 passes every check and reaches about 15% more range than n = 3 (+16.0° / −19.8°), but below 3 the v2 lower skin has a (weak, for 2.8) strain spike right at the hinge. Placeholder: n = 3.
+16. *New (shape exponent):* is n a little below 3 acceptable? n = 2.8 passes every check and reaches about 15% more range than n = 3 at every hinge (`flap_study.py`; +16.0° / −19.8° at 0.65), but below 3 the v2 lower skin has a (weak, for 2.8) strain spike right at the hinge. Placeholder: n = 3.
+17. *New (cruise):* which air density is right, 0.3021 kg/m³ (as given; the standard value at about 40,000 ft) or 0.332 kg/m³ (what the given pressure and speed of sound mean at 38,000 ft)? Lift forces change by 10%.
+18. *New (cruise):* what is the wing's sweep? At Mach 0.8 the section sees roughly 0.8 × cos(sweep), and that decides whether the SC(2)-0714 is inside its tested range (Mach 0.6–0.76) and what Mach the CFD should run.
 
 ## Possible next steps
 
@@ -693,7 +812,11 @@ base meshed (open question 5).
   the flow stays attached at the ends of the range (the geometry checks
   can't tell).
 - Two settings at a time, e.g. skin thickness with hinge position, once the
-  structures team narrows the ranges (`variable_study.py` changes one at a time).
+  structures team narrows the ranges (`variable_study.py` changes one at a time;
+  `flap_study.py` already covers hinge with n).
+- Air load on the morphing skin at cruise (q = 8.4 kPa times the pressure
+  coefficient). The checks are pure geometry; structures will need the load to
+  size the skin and actuators. CFD pressures on the morphed shapes would give it.
 
 ---
 
@@ -714,21 +837,23 @@ morphgeom/                  the code (Python package)
   surfaces.py               data types, camber + thickness -> surfaces, point loops, .dat reader and splitter
   morph.py                  v1 camber deflection, v2 constant_length, apply (picks the method), equivalent angles
   checks.py                 wing box, skin length, strain, joins, sanity
-  aero.py                   rough lift change (thin-airfoil estimate)
-  deflection.py             deflection range search, wing box size, one-setting-at-a-time study
+  aero.py                   rough lift change (thin-airfoil estimate), cruise condition (Mach, q, Reynolds number)
+  deflection.py             deflection range search, wing box size, one-setting-at-a-time study, flap study worker
   export.py                 .dat, CAD XYZ (mm), summary row / CSV, printed report
-  plots.py                  overlay, camber lines, curvature, baseline check, deflection range, spar study, variable study
+  plots.py                  overlay, camber lines, curvature, baseline check, deflection range, spar study, variable study,
+                            flap study maps
   pipeline.py               load_baseline, make_shape, write_outputs
   config.py                 reads config/default.yaml
   step.py                   STEP files (2D face, 3D solid) and a read-back check; needs pythonocc-core
 scripts/                    make_baseline.py, make_shape.py, sweep.py, make_step.py, deflection_range.py, spar_study.py,
-                            variable_study.py
-tests/                      27 pytest tests (the 7 from the handoff, 5 helpers, 5 for v2, 3 for SC(2)-0714 / case files,
-                            1 for STEP, 4 for the hinge, lift estimate, deflection range and spar study, 2 for the variable study)
+                            variable_study.py, flap_study.py
+tests/                      29 pytest tests (the 7 from the handoff, 5 helpers, 5 for v2, 3 for SC(2)-0714 / case files,
+                            1 for STEP, 4 for the hinge, lift estimate, deflection range and spar study, 2 for the variable study,
+                            2 for the cruise condition and flap study)
 outputs/                    generated files, one folder per airfoil:
-  sc20714/                  SC(2)-0714 (default): baseline, shapes, sweep, range, spar_study, variable_study
+  sc20714/                  SC(2)-0714 (default): baseline, shapes, sweep, range, spar_study, variable_study, flap_study
   sc20714_tunnel/           SC(2)-0714 at 152.4 mm, including the STEP files
-  naca641412/               NACA 64(1)-412: baseline, shapes, sweep, range, spar_study, variable_study
+  naca641412/               NACA 64(1)-412: baseline, shapes, sweep, range, spar_study, variable_study, flap_study
 ```
 
 ## Sources
