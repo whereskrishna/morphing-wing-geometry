@@ -99,6 +99,9 @@ flap_study:                # scripts/flap_study.py: every flap angle x hinge x s
   workers: 0               # shapes made at once, one per processor core; 0 = all cores
 
 cfd_set:                   # scripts/cfd_shapes.py: the shapes to send to CFD (TE only, rear spar at the hinge)
+  batch: 1                 # each set sent to CFD is a batch: its own folder (cfd_shapes/batch1/) and its number
+                           # in every file name. For a new set, give it a new number: a batch already written
+                           # is never overwritten with different shapes.
   method: constant_length  # constant_length (buildable skins) or camber
   # The baseline is always case 1. Then each group, in order: every hinge x n x angle
   # (equivalent flap angles, deg). Shapes that fail a check are left out (and listed).

@@ -58,7 +58,7 @@ Then run any script:
 | `python scripts/spar_study.py` | Deflection range at a series of rear spar stations, and the furthest-aft station that still reaches the needed range → `outputs/sc20714/spar_study/`. About 35 seconds. |
 | `python scripts/variable_study.py` | Changes one setting at a time (hinge, shape exponent, skin, chord, strain limit, ...) and finds the range each time, then ranks which settings matter most → `outputs/sc20714/variable_study/`. A few minutes. |
 | `python scripts/flap_study.py` | Every equivalent flap angle (−30° to +30°) at every hinge and shape exponent n: which shapes pass, the exact largest droop and reflex for each hinge and n, and the lift per degree at the cruise condition → `outputs/sc20714/flap_study/`. About 1.5 minutes (uses every processor core). |
-| `python scripts/cfd_shapes.py` | The shapes to send to CFD (the `cfd_set:` settings): one `.dat` per shape, a list of cases, a picture and a note for the CFD team → `outputs/sc20714/cfd_shapes/`. About 2 seconds. |
+| `python scripts/cfd_shapes.py` | The shapes to send to CFD (the `cfd_set:` settings): one `.dat` per shape, a list of cases, a picture and a note for the CFD team → `outputs/sc20714/cfd_shapes/batch1/` (one folder per batch sent). About 2 seconds. |
 | `pytest` | Runs the 30 tests in `tests/` (about a minute). |
 
 With no case file, every script works on the **SC(2)-0714**. Each script also
@@ -594,10 +594,12 @@ answer.
 python scripts/cfd_shapes.py
 ```
 
-This makes the shapes for the CFD team and writes everything they need to
-`outputs/sc20714/cfd_shapes/` (about 2 seconds):
-- One `.dat` per shape (chord 1, Selig order, 6 decimals), named by case
-  number. For example, `sc20714_cfd07_flap+5deg_xh0.650_n3_constlen.dat` is
+This makes the shapes for the CFD team. Each set sent to CFD is a numbered
+**batch** in its own folder. The first set is batch 1:
+`outputs/sc20714/cfd_shapes/batch1/` (about 2 seconds). It holds:
+- One `.dat` per shape (chord 1, Selig order, 6 decimals), named by batch and
+  case number. For example,
+  `sc20714_batch1_cfd07_flap+5deg_xh0.650_n3_constlen.dat` is batch 1,
   case 7: flap angle +5°, hinge 0.650, n = 3.
 - `cfd_cases.csv`: every case, with the rough lift estimate to compare
   against.
@@ -609,7 +611,7 @@ This makes the shapes for the CFD team and writes everything they need to
     angle of attack);
   - what to send back.
 
-The set is under `cfd_set:` in `config/default.yaml`. The first set is 21
+The set is under `cfd_set:` in `config/default.yaml`. Batch 1 is 21
 shapes, picked from the flap study to answer three questions:
 
 | Group | Cases | Shapes | What it shows |
@@ -631,10 +633,16 @@ shapes, picked from the flap study to answer three questions:
 - **This is a first look, not the final design.** The hinge, n, the angles
   and the Mach number to run all wait on open questions 3, 14, 16 and 18.
   The angle of attack is left to aero/CFD (the note asks).
-- **To change the set, edit `cfd_set:`.** Each group is every hinge × n ×
-  angle listed in it. Each run removes the old `.dat` files from the folder,
-  so it only holds the current set. For the 64(1)-412:
-  `python scripts/cfd_shapes.py config/naca641412.yaml`.
+- **For the next set, start a new batch.**
+  - Set `batch: 2` under `cfd_set:`, change the groups, and run the script
+    again. Batch 2 gets its own folder, and batch 1 stays as it was sent.
+  - Each group is every hinge × n × angle listed in it.
+  - The script never overwrites a batch with different shapes, because that
+    batch may already be with the CFD team. If you forget to change the
+    number, it stops and changes nothing.
+  - Running the same batch again just rewrites the same files.
+  - To redo a batch on purpose, delete its folder first.
+- **For the 64(1)-412:** `python scripts/cfd_shapes.py config/naca641412.yaml`.
 
 ### Rough lift estimate
 
@@ -866,7 +874,7 @@ base meshed (open question 5).
 - Air load on the morphing skin at cruise (q = 8.4 kPa times the pressure
   coefficient). The checks are pure geometry; structures will need the load to
   size the skin and actuators. CFD pressures on the morphed shapes would give it.
-- When the CFD results on `cfd_shapes.py`'s set come back: read cl per case
+- When the CFD results on batch 1 (`cfd_shapes/batch1/`) come back: read cl per case
   in, and use the real lift per degree in the flap study in place of the
   thin-airfoil estimate.
 
@@ -891,7 +899,8 @@ morphgeom/                  the code (Python package)
   checks.py                 wing box, skin length, strain, joins, sanity
   aero.py                   rough lift change (thin-airfoil estimate), cruise condition (Mach, q, Reynolds number)
   deflection.py             deflection range search, wing box size, one-setting-at-a-time study, flap study worker
-  cfd.py                    the CFD shape set: which shapes, their files, the list of cases and the note for CFD
+  cfd.py                    the CFD shape set: which shapes, their files, the list of cases and the note for CFD,
+                            one numbered batch per folder
   export.py                 .dat, CAD XYZ (mm), summary row / CSV, printed report
   plots.py                  overlay, camber lines, curvature, baseline check, deflection range, spar study, variable study,
                             flap study maps, CFD shapes
@@ -905,7 +914,7 @@ tests/                      30 pytest tests (the 7 from the handoff, 5 helpers, 
                             3 for the cruise condition, flap study and CFD set)
 outputs/                    generated files, one folder per airfoil:
   sc20714/                  SC(2)-0714 (default): baseline, shapes, sweep, range, spar_study, variable_study, flap_study,
-                            cfd_shapes (the set for the CFD team)
+                            cfd_shapes (one folder per batch sent to the CFD team: batch1/)
   sc20714_tunnel/           SC(2)-0714 at 152.4 mm, including the STEP files
   naca641412/               NACA 64(1)-412: baseline, shapes, sweep, range, spar_study, variable_study, flap_study
 ```

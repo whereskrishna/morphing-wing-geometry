@@ -1,5 +1,7 @@
-Shapes for CFD: sc20714 baseline + 20 morphed trailing edges
+CFD batch 1: sc20714 baseline + 20 morphed trailing edges
 Made by scripts/cfd_shapes.py from the cfd_set settings (config/default.yaml). Baseline: coordinates from sc20714.dat.
+Case numbers belong to this batch: every file name starts with "sc20714_batch1_".
+Later batches come in their own folders, with their own numbers.
 
 FILES
   <name>.dat       one shape each. Line 1 is the name, then one x y pair per line.

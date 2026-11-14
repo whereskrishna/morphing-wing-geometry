@@ -7,8 +7,11 @@ Which shapes: cfd_set in config/default.yaml. Case 1 is the baseline; then each
 group, every hinge x shape exponent n x flap angle (TE only, rear spar at the
 hinge). Shapes that fail a check are left out and listed.
 
-Writes <output dir>/cfd_shapes/ (old .dat files there are removed first, so the
-folder only ever holds the current set):
+Each set is a numbered batch (cfd_set: batch:). Writes <output dir>/cfd_shapes/batch<N>/.
+Running the same batch again rewrites the same files. If that batch already holds
+different shapes, it stops and changes nothing: give the new set a new number.
+
+In each batch folder:
     <name>.dat        one per shape: chord 1, Selig order, 6 decimals. Send these.
     cfd_cases.csv     every case: group, hinge, n, flap angle, tip drop, rough lift estimate
     cfd_shapes.png    every shape drawn against the baseline
@@ -23,15 +26,18 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from morphgeom import load_config  # noqa: E402
-from morphgeom.cfd import case_rows, cfd_cases, write_cfd_set  # noqa: E402
+from morphgeom.cfd import batch_dir, case_rows, cfd_cases, write_cfd_set  # noqa: E402
 
 cfg = load_config(sys.argv[1] if len(sys.argv) > 1 else None)   # optional case file
 t0 = time.time()
 cases, skipped = cfd_cases(cfg)
-outdir = Path(cfg.output.dir) / "cfd_shapes"
-files = write_cfd_set(cases, skipped, cfg, outdir)
+outdir = batch_dir(cfg)
+try:
+    files = write_cfd_set(cases, skipped, cfg, outdir)
+except FileExistsError as e:
+    sys.exit(f"\nNothing written. {e}")
 
-print(f"\nShapes for CFD: {cfg.baseline.name}, {cfg.cfd_set.method}, TE only, rear spar at the hinge")
+print(f"\nCFD batch {cfg.cfd_set.batch}: {cfg.baseline.name}, {cfg.cfd_set.method}, TE only, rear spar at the hinge")
 print(f"  {'case':>4s}  {'group':<15s} {'flap (deg)':>10s} {'hinge':>6s} {'n':>4s} {'tip drop (% c)':>15s} "
       f"{'strain (%)':>11s} {'lift est. (cl)':>15s}   file")
 for r in case_rows(cases, cfg):

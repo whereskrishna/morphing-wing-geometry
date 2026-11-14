@@ -1,11 +1,15 @@
 """The shapes to send to CFD: which ones, their coordinate files, and a note on how to run them.
 
-    from morphgeom.cfd import cfd_cases, write_cfd_set
+    from morphgeom.cfd import batch_dir, cfd_cases, write_cfd_set
     cases, skipped = cfd_cases(cfg)       # the baseline first, then every group in cfg.cfd_set
-    write_cfd_set(cases, skipped, cfg, outdir)
+    write_cfd_set(cases, skipped, cfg, batch_dir(cfg))
 
 Only the trailing edge morphs, with the rear spar at the hinge (as in flap_study.py).
 Angles are equivalent flap angles (deg): + = droop, - = reflex.
+
+Each set sent to CFD is a numbered batch (cfg.cfd_set.batch), in its own folder
+and with its number in every file name. A batch already written is never
+overwritten with different shapes: it may already be with the CFD team.
 """
 from __future__ import annotations
 
@@ -21,11 +25,17 @@ from .pipeline import make_shape
 from .surfaces import loop
 
 
-def case_name(af_name: str, case: int, angle_deg=None, x_h=None, n=None, v2=False) -> str:
-    """File name stem: sc20714_cfd01_baseline, sc20714_cfd07_flap+5deg_xh0.650_n3_constlen."""
+def batch_dir(cfg) -> Path:
+    """The batch's folder: <output dir>/cfd_shapes/batch<N>."""
+    return Path(cfg.output.dir) / "cfd_shapes" / f"batch{cfg.cfd_set.batch}"
+
+
+def case_name(af_name: str, batch, case: int, angle_deg=None, x_h=None, n=None, v2=False) -> str:
+    """File name stem: sc20714_batch1_cfd01_baseline, sc20714_batch1_cfd07_flap+5deg_xh0.650_n3_constlen."""
+    stem = f"{af_name}_batch{batch}_cfd{case:02d}"
     if angle_deg is None:
-        return f"{af_name}_cfd{case:02d}_baseline"
-    return f"{af_name}_cfd{case:02d}_flap{angle_deg:+g}deg_xh{x_h:.3f}_n{n:g}" + ("_constlen" if v2 else "")
+        return f"{stem}_baseline"
+    return f"{stem}_flap{angle_deg:+g}deg_xh{x_h:.3f}_n{n:g}" + ("_constlen" if v2 else "")
 
 
 def cfd_cases(cfg, af=None) -> tuple:
@@ -45,7 +55,8 @@ def cfd_cases(cfg, af=None) -> tuple:
     c.morph.delta_TE = c.morph.delta_LE = 0.0
     af = af if af is not None else _baseline(c)
     v2 = c.morph.method == "constant_length"
-    cases = [{"case": 1, "group": "baseline", "name": case_name(af.name, 1), "x_h": None, "n": None,
+    batch = cfg.cfd_set.batch
+    cases = [{"case": 1, "group": "baseline", "name": case_name(af.name, batch, 1), "x_h": None, "n": None,
               "angle_deg": None, "delta": 0.0, "res": make_shape(c, af)}]
     skipped, seen = [], set()
     for g in cfg.cfd_set.groups:
@@ -67,7 +78,7 @@ def cfd_cases(cfg, af=None) -> tuple:
                         skipped.append(entry)
                     else:
                         entry["case"] = len(cases) + 1
-                        entry["name"] = case_name(af.name, entry["case"], a, x_h, n, v2)
+                        entry["name"] = case_name(af.name, batch, entry["case"], a, x_h, n, v2)
                         cases.append(entry)
     return cases, skipped
 
@@ -114,9 +125,12 @@ def note(cases, skipped, cfg) -> str:
     order = "TE -> upper surface -> LE -> lower surface -> TE (Selig)" if pts.order == "selig" \
         else "TE -> lower surface -> LE -> upper surface -> TE"
     gap_rho = fc["density_from_p_t"] / fl.density_kg_m3 - 1
+    b = cfg.cfd_set.batch
     L = [
-        f"Shapes for CFD: {cfg.baseline.name} baseline + {len(cases) - 1} morphed trailing edges",
+        f"CFD batch {b}: {cfg.baseline.name} baseline + {len(cases) - 1} morphed trailing edges",
         f"Made by scripts/cfd_shapes.py from the cfd_set settings (config/default.yaml). Baseline: {_source(cfg)}.",
+        f"Case numbers belong to this batch: every file name starts with \"{cfg.baseline.name}_batch{b}_\".",
+        "Later batches come in their own folders, with their own numbers.",
         "",
         "FILES",
         "  <name>.dat       one shape each. Line 1 is the name, then one x y pair per line.",
@@ -200,19 +214,39 @@ def _ranges(ids) -> str:
     return ", ".join(out)
 
 
-def write_cfd_set(cases, skipped, cfg, outdir) -> dict:
-    """Write the CFD folder. Old <airfoil>_cfd*.dat files in it are removed
-    first, so it only ever holds the current set."""
+def differs(outdir, cases, cfg) -> bool:
+    """True if outdir already holds shapes and they are not exactly this set
+    (other files, or the same names with other coordinates)."""
     outdir = Path(outdir)
+    old = sorted(p.name for p in outdir.glob("*.dat"))
+    if not old:
+        return False
+    if old != sorted(f"{c['name']}.dat" for c in cases):
+        return True
+    for c in cases:
+        xy = np.loadtxt(outdir / f"{c['name']}.dat", skiprows=1, ndmin=2)
+        new = loop(c["res"].shape, cfg.points.order)
+        if xy.shape != new.shape or np.abs(xy - new).max() > 1e-6:
+            return True
+    return False
+
+
+def write_cfd_set(cases, skipped, cfg, outdir) -> dict:
+    """Write one batch's folder. Writing the same set again is fine; a
+    different set stops with FileExistsError and leaves the folder alone."""
+    outdir = Path(outdir)
+    b = cfg.cfd_set.batch
+    if differs(outdir, cases, cfg):
+        raise FileExistsError(
+            f"Batch {b} ({outdir}) already holds a different set of shapes. It may already be with the CFD "
+            f"team, so it is left as it is. Give the new set its own number (cfd_set: batch: in "
+            f"config/default.yaml), or delete that folder to redo batch {b}.")
     outdir.mkdir(parents=True, exist_ok=True)
-    af_name = cases[0]["name"].rsplit("_cfd", 1)[0]
-    for old in outdir.glob(f"{af_name}_cfd*.dat"):
-        old.unlink()
     for c in cases:
         export.write_selig(outdir / f"{c['name']}.dat", loop(c["res"].shape, cfg.points.order), c["name"])
     files = {"csv": outdir / "cfd_cases.csv", "png": outdir / "cfd_shapes.png", "note": outdir / "README_cfd.txt"}
     export.write_summary_csv(files["csv"], case_rows(cases, cfg))
-    plots.cfd_shapes(cases, f"Shapes for CFD - {af_name}", files["png"])
+    plots.cfd_shapes(cases, f"CFD batch {b} - {cfg.baseline.name}", files["png"])
     files["note"].write_text(note(cases, skipped, cfg))
     return files
 
