@@ -17,6 +17,8 @@ Writes <output dir>/flap_study/:
     <name>_limits.png   largest droop, largest reflex, total range and lift, as hinge x n maps
     <name>_map.png      every shape tried, one panel per n: passes, or what stopped it
 """
+"carbon composite skin material"
+
 import os
 import sys
 import time

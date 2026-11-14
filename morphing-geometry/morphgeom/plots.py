@@ -570,3 +570,44 @@ def flap_study_map(grid, limits, cfg, title: str, path) -> None:
                  f"then curvature join, then strain)", color=TEXT, fontsize=FONT + 1)
     fig.savefig(path, dpi=150, facecolor=SURFACE)
     plt.close(fig)
+
+
+def cfd_shapes(cases, title: str, path, cols: int = 3) -> None:
+    """Every CFD shape against the baseline: one small panel each, true scale,
+    numbered as in cfd_cases.csv. The grey line is the hinge."""
+    rows = -(-len(cases) // cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(4.6 * cols, 1.25 * rows + 0.9), facecolor=SURFACE, squeeze=False)
+    B = loop(cases[0]["res"].base)
+    loops = [loop(c["res"].shape) for c in cases]
+    ylo = min(P[:, 1].min() for P in loops) - 0.01
+    yhi = max(P[:, 1].max() for P in loops) + 0.01
+    for ax in axes.flat:
+        ax.set_visible(False)
+    for ax, c, M in zip(axes.flat, cases, loops):
+        ax.set_visible(True)
+        ax.set_facecolor(SURFACE)
+        ax.axhline(0, color=GRID, linewidth=0.6, zorder=0)
+        if c["angle_deg"] is None:
+            label = f"{c['case']}  baseline"
+        else:
+            ax.axvline(c["x_h"], color=SPAR, linewidth=0.8, zorder=0)
+            label = f"{c['case']}  {c['group']}:  {c['angle_deg']:+g}°,  hinge {c['x_h']:.3f},  n {c['n']:g}"
+        ax.plot(B[:, 0], B[:, 1], color=BASE, linewidth=1.0)
+        if c["angle_deg"] is not None:
+            ax.plot(M[:, 0], M[:, 1], color=MORPH, linewidth=1.4)
+        ax.set_xlim(-0.02, 1.02)
+        ax.set_ylim(ylo, yhi)
+        ax.set_aspect("equal")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for side in ax.spines.values():
+            side.set_visible(False)
+        ax.set_title(label, fontsize=FONT - 1, loc="left", color=TEXT)
+    handles = [plt.Line2D([], [], color=BASE, linewidth=1.0, label="baseline"),
+               plt.Line2D([], [], color=MORPH, linewidth=1.4, label="morphed"),
+               plt.Line2D([], [], color=SPAR, linewidth=0.8, label="hinge (rear spar)")]
+    fig.legend(handles=handles, loc="upper right", ncol=3, frameon=False, labelcolor=TEXT, fontsize=FONT)
+    fig.suptitle(title, x=0.01, ha="left", fontsize=FONT + 1, color=TEXT)
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    fig.savefig(path, dpi=150, facecolor=SURFACE)
+    plt.close(fig)

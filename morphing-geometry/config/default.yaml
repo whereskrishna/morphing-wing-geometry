@@ -98,6 +98,20 @@ flap_study:                # scripts/flap_study.py: every flap angle x hinge x s
   n: [2, 2.5, 2.8, 3, 3.5, 4, 5, 6]
   workers: 0               # shapes made at once, one per processor core; 0 = all cores
 
+cfd_set:                   # scripts/cfd_shapes.py: the shapes to send to CFD (TE only, rear spar at the hinge)
+  method: constant_length  # constant_length (buildable skins) or camber
+  # The baseline is always case 1. Then each group, in order: every hinge x n x angle
+  # (equivalent flap angles, deg). Shapes that fail a check are left out (and listed).
+  # These are a FIRST SET to learn from, chosen from the flap study. Not design choices.
+  # why: one line for the CFD note (README_cfd.txt) on what the group is meant to show.
+  groups:
+    - {name: "angle sweep", x_h: [0.65], n: [3], angles: [-15, -10, -5, -2, 2, 5, 10, 13],
+       why: "the real lift per degree at cruise, and how far the trailing edge can go before shocks or separation stop it helping"}
+    - {name: "hinge", x_h: [0.55, 0.75, 0.85], n: [3], angles: [-5, 5],
+       why: "how much the hinge position changes the lift (compare with hinge 0.65 in the angle sweep)"}
+    - {name: "shape exponent", x_h: [0.65], n: [2.8, 3.5, 4], angles: [-5, 5],
+       why: "how much the shape exponent n changes the lift (compare with n 3 in the angle sweep)"}
+
 variable_study:            # scripts/variable_study.py: change ONE setting at a time, find the range each time
   method: constant_length  # constant_length (buildable skins) or camber
   edges: [TE, LE]          # which edges to study, each with its own list below

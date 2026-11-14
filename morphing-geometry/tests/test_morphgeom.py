@@ -435,3 +435,35 @@ def test_flap_point(af, cfg):
     rng = find_range(c, af, "TE")
     assert lim["droop_max_deg"] == rng["droop"].angle_deg and lim["reflex_max_deg"] == rng["reflex"].angle_deg
     assert lim["range_deg"] == pytest.approx(lim["droop_max_deg"] - lim["reflex_max_deg"])
+
+
+def test_cfd_set(af, cfg, tmp_path):
+    from morphgeom import copy_config
+    from morphgeom.cfd import case_rows, cfd_cases, write_cfd_set
+    c = copy_config(cfg)
+    c.cfd_set.groups = [{"name": "sweep", "x_h": [0.7], "n": [3], "angles": [-2, 0, 2, 40]},
+                        {"name": "hinge", "x_h": [0.7, 0.75], "n": [3], "angles": [2], "why": "a test"}]
+    cases, skipped = cfd_cases(c, af)
+    assert [k["case"] for k in cases] == [1, 2, 3, 4]
+    assert cases[0]["angle_deg"] is None and cases[0]["name"] == "naca641412_cfd01_baseline"
+    # angle 0 (the baseline) and the repeated 0.7 / +2 shape are not added again; 40 deg fails and is left out
+    assert [(k["group"], k["x_h"], k["angle_deg"]) for k in cases[1:]] == \
+        [("sweep", 0.7, -2.0), ("sweep", 0.7, 2.0), ("hinge", 0.75, 2.0)]
+    assert [s["angle_deg"] for s in skipped] == [40.0] and skipped[0]["failed"]
+    assert cases[2]["name"] == "naca641412_cfd03_flap+2deg_xh0.700_n3_constlen"
+    rows = case_rows(cases, c)
+    assert rows[2]["tip_drop_pct_chord"] == pytest.approx(100 * 0.3 * np.tan(np.radians(2)))
+    assert rows[2]["lift_change_cl_estimate"] > 0 > rows[1]["lift_change_cl_estimate"]
+    (tmp_path / "naca641412_cfd09_old.dat").write_text("stale")
+    write_cfd_set(cases, skipped, c, tmp_path)
+    dats = sorted(tmp_path.glob("*.dat"))
+    assert [p.stem for p in dats] == [k["name"] for k in cases]                 # the stale file is gone
+    base = np.loadtxt(dats[0], skiprows=1)
+    assert len(base) == 2 * c.points.n_per_surface - 1
+    for p, k in zip(dats[1:], cases[1:]):                                        # ahead of the hinge: the baseline
+        xy = np.loadtxt(p, skiprows=1)
+        ahead = base[:, 0] < k["x_h"] - 1e-9
+        np.testing.assert_array_equal(xy[ahead], base[ahead])
+    note = (tmp_path / "README_cfd.txt").read_text()
+    assert "cases 2-3" in note and "to show a test" in note and "LEFT OUT" in note
+    assert (tmp_path / "cfd_cases.csv").read_text().count("\n") == 5 and (tmp_path / "cfd_shapes.png").exists()

@@ -58,7 +58,8 @@ Then run any script:
 | `python scripts/spar_study.py` | Deflection range at a series of rear spar stations, and the furthest-aft station that still reaches the needed range → `outputs/sc20714/spar_study/`. About 35 seconds. |
 | `python scripts/variable_study.py` | Changes one setting at a time (hinge, shape exponent, skin, chord, strain limit, ...) and finds the range each time, then ranks which settings matter most → `outputs/sc20714/variable_study/`. A few minutes. |
 | `python scripts/flap_study.py` | Every equivalent flap angle (−30° to +30°) at every hinge and shape exponent n: which shapes pass, the exact largest droop and reflex for each hinge and n, and the lift per degree at the cruise condition → `outputs/sc20714/flap_study/`. About 1.5 minutes (uses every processor core). |
-| `pytest` | Runs the 29 tests in `tests/` (about a minute). |
+| `python scripts/cfd_shapes.py` | The shapes to send to CFD (the `cfd_set:` settings): one `.dat` per shape, a list of cases, a picture and a note for the CFD team → `outputs/sc20714/cfd_shapes/`. About 2 seconds. |
+| `pytest` | Runs the 30 tests in `tests/` (about a minute). |
 
 With no case file, every script works on the **SC(2)-0714**. Each script also
 takes a **case file** for another airfoil or setup, for example the NACA
@@ -587,6 +588,54 @@ M × cos(sweep), e.g. about 0.69 at 30° sweep. So the wing's sweep matters
 `lift_per_deg_n_per_m_compressible` for reference only. CFD gives the real
 answer.
 
+### Shapes for CFD: `scripts/cfd_shapes.py`
+
+```bash
+python scripts/cfd_shapes.py
+```
+
+This makes the shapes for the CFD team and writes everything they need to
+`outputs/sc20714/cfd_shapes/` (about 2 seconds):
+- One `.dat` per shape (chord 1, Selig order, 6 decimals), named by case
+  number. For example, `sc20714_cfd07_flap+5deg_xh0.650_n3_constlen.dat` is
+  case 7: flap angle +5°, hinge 0.650, n = 3.
+- `cfd_cases.csv`: every case, with the rough lift estimate to compare
+  against.
+- `cfd_shapes.png`: every shape drawn against the baseline.
+- `README_cfd.txt`: a note to send along. It covers:
+  - how the shapes are set up (not re-normalised, blunt trailing edge);
+  - the cruise condition;
+  - what is still open (sweep, density, chord, trailing-edge closure,
+    angle of attack);
+  - what to send back.
+
+The set is under `cfd_set:` in `config/default.yaml`. The first set is 21
+shapes, picked from the flap study to answer three questions:
+
+| Group | Cases | Shapes | What it shows |
+|---|---|---|---|
+| baseline | 1 | the unmorphed SC(2)-0714 | the reference for every other case |
+| angle sweep | 2–9 | hinge 0.65, n = 3: −15, −10, −5, −2, +2, +5, +10, +13° | the real lift per degree at Mach 0.8, and how far the trailing edge can go before shocks or separation stop it helping |
+| hinge | 10–15 | n = 3, hinge 0.55, 0.75 and 0.85: ±5° | how much the hinge position changes the lift |
+| shape exponent | 16–21 | hinge 0.65, n = 2.8, 3.5 and 4: ±5° | how much n changes the lift |
+
+- **Every shape passes every check.**
+  - Hinge 0.65 and n = 3 are the placeholders.
+  - +13° and −15° are just inside the n = 3 limits (+13.9° / −17.0°).
+  - If the placeholders change and a shape stops passing, the script leaves
+    it out and lists it.
+- **Ahead of the hinge, every file matches the baseline point for point.**
+- **The shapes don't depend on the placeholder chord, skin or strain
+  limit.** Those only decide pass or fail, so the files stay valid when the
+  real numbers arrive. The Reynolds number does scale with the chord.
+- **This is a first look, not the final design.** The hinge, n, the angles
+  and the Mach number to run all wait on open questions 3, 14, 16 and 18.
+  The angle of attack is left to aero/CFD (the note asks).
+- **To change the set, edit `cfd_set:`.** Each group is every hinge × n ×
+  angle listed in it. Each run removes the old `.dat` files from the folder,
+  so it only holds the current set. For the 64(1)-412:
+  `python scripts/cfd_shapes.py config/naca641412.yaml`.
+
 ### Rough lift estimate
 
 `aero.py` estimates the lift change of a morph at the same angle of attack,
@@ -817,6 +866,9 @@ base meshed (open question 5).
 - Air load on the morphing skin at cruise (q = 8.4 kPa times the pressure
   coefficient). The checks are pure geometry; structures will need the load to
   size the skin and actuators. CFD pressures on the morphed shapes would give it.
+- When the CFD results on `cfd_shapes.py`'s set come back: read cl per case
+  in, and use the real lift per degree in the flap study in place of the
+  thin-airfoil estimate.
 
 ---
 
@@ -839,19 +891,21 @@ morphgeom/                  the code (Python package)
   checks.py                 wing box, skin length, strain, joins, sanity
   aero.py                   rough lift change (thin-airfoil estimate), cruise condition (Mach, q, Reynolds number)
   deflection.py             deflection range search, wing box size, one-setting-at-a-time study, flap study worker
+  cfd.py                    the CFD shape set: which shapes, their files, the list of cases and the note for CFD
   export.py                 .dat, CAD XYZ (mm), summary row / CSV, printed report
   plots.py                  overlay, camber lines, curvature, baseline check, deflection range, spar study, variable study,
-                            flap study maps
+                            flap study maps, CFD shapes
   pipeline.py               load_baseline, make_shape, write_outputs
   config.py                 reads config/default.yaml
   step.py                   STEP files (2D face, 3D solid) and a read-back check; needs pythonocc-core
 scripts/                    make_baseline.py, make_shape.py, sweep.py, make_step.py, deflection_range.py, spar_study.py,
-                            variable_study.py, flap_study.py
-tests/                      29 pytest tests (the 7 from the handoff, 5 helpers, 5 for v2, 3 for SC(2)-0714 / case files,
+                            variable_study.py, flap_study.py, cfd_shapes.py
+tests/                      30 pytest tests (the 7 from the handoff, 5 helpers, 5 for v2, 3 for SC(2)-0714 / case files,
                             1 for STEP, 4 for the hinge, lift estimate, deflection range and spar study, 2 for the variable study,
-                            2 for the cruise condition and flap study)
+                            3 for the cruise condition, flap study and CFD set)
 outputs/                    generated files, one folder per airfoil:
-  sc20714/                  SC(2)-0714 (default): baseline, shapes, sweep, range, spar_study, variable_study, flap_study
+  sc20714/                  SC(2)-0714 (default): baseline, shapes, sweep, range, spar_study, variable_study, flap_study,
+                            cfd_shapes (the set for the CFD team)
   sc20714_tunnel/           SC(2)-0714 at 152.4 mm, including the STEP files
   naca641412/               NACA 64(1)-412: baseline, shapes, sweep, range, spar_study, variable_study, flap_study
 ```

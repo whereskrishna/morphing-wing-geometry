@@ -1,0 +1,22 @@
+case,group,file,hinge_x_c,n,flap_angle_deg,tip_drop_pct_chord,strain_max_pct,lift_change_cl_estimate,lift_change_n_per_m_estimate
+1,baseline,sc20714_cfd01_baseline.dat,-,-,0.000,0.000,0.000,0.000,0.000
+2,angle sweep,sc20714_cfd02_flap-15deg_xh0.650_n3_constlen.dat,0.650,3.000,-15.000,-9.378,0.438,-2.041,-17184.055
+3,angle sweep,sc20714_cfd03_flap-10deg_xh0.650_n3_constlen.dat,0.650,3.000,-10.000,-6.171,0.290,-1.316,-11077.550
+4,angle sweep,sc20714_cfd04_flap-5deg_xh0.650_n3_constlen.dat,0.650,3.000,-5.000,-3.062,0.147,-0.655,-5512.249
+5,angle sweep,sc20714_cfd05_flap-2deg_xh0.650_n3_constlen.dat,0.650,3.000,-2.000,-1.222,0.059,-0.264,-2226.666
+6,angle sweep,sc20714_cfd06_flap+2deg_xh0.650_n3_constlen.dat,0.650,3.000,2.000,1.222,0.061,0.272,2293.477
+7,angle sweep,sc20714_cfd07_flap+5deg_xh0.650_n3_constlen.dat,0.650,3.000,5.000,3.062,0.157,0.707,5953.322
+8,angle sweep,sc20714_cfd08_flap+10deg_xh0.650_n3_constlen.dat,0.650,3.000,10.000,6.171,0.334,1.578,13282.625
+9,angle sweep,sc20714_cfd09_flap+13deg_xh0.650_n3_constlen.dat,0.650,3.000,13.000,8.080,0.458,2.313,19471.565
+10,hinge,sc20714_cfd10_flap-5deg_xh0.550_n3_constlen.dat,0.550,3.000,-5.000,-3.937,0.115,-0.735,-6188.849
+11,hinge,sc20714_cfd11_flap+5deg_xh0.550_n3_constlen.dat,0.550,3.000,5.000,3.937,0.123,0.790,6646.907
+12,hinge,sc20714_cfd12_flap-5deg_xh0.750_n3_constlen.dat,0.750,3.000,-5.000,-2.187,0.201,-0.560,-4713.125
+13,hinge,sc20714_cfd13_flap+5deg_xh0.750_n3_constlen.dat,0.750,3.000,5.000,2.187,0.217,0.608,5121.608
+14,hinge,sc20714_cfd14_flap-5deg_xh0.850_n3_constlen.dat,0.850,3.000,-5.000,-1.312,0.321,-0.441,-3713.056
+15,hinge,sc20714_cfd15_flap+5deg_xh0.850_n3_constlen.dat,0.850,3.000,5.000,1.312,0.353,0.482,4060.151
+16,shape exponent,sc20714_cfd16_flap-5deg_xh0.650_n2.8_constlen.dat,0.650,2.800,-5.000,-3.062,0.124,-0.633,-5329.855
+17,shape exponent,sc20714_cfd17_flap+5deg_xh0.650_n2.8_constlen.dat,0.650,2.800,5.000,3.062,0.132,0.679,5719.289
+18,shape exponent,sc20714_cfd18_flap-5deg_xh0.650_n3.5_constlen.dat,0.650,3.500,-5.000,-3.062,0.210,-0.706,-5945.917
+19,shape exponent,sc20714_cfd19_flap+5deg_xh0.650_n3.5_constlen.dat,0.650,3.500,5.000,3.062,0.228,0.776,6529.642
+20,shape exponent,sc20714_cfd20_flap-5deg_xh0.650_n4_constlen.dat,0.650,4.000,-5.000,-3.062,0.283,-0.755,-6353.463
+21,shape exponent,sc20714_cfd21_flap+5deg_xh0.650_n4_constlen.dat,0.650,4.000,5.000,3.062,0.313,0.843,7100.439
